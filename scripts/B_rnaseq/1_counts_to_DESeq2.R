@@ -34,7 +34,7 @@ symbolizeResults <- function(x, key) {
     filter(!is.na(padj)) %>% 
     filter(!is.na(log2FoldChange)) %>% 
     dplyr::select(hgnc_symbol, everything()) %>% 
-    dplyr::select(-ensembl_gene)
+    dplyr::select(-ensembl_gene, entrez_gene)
   x
 }
 
@@ -51,7 +51,7 @@ entrezResults <- function(x, key) {
     filter(!is.na(entrez_gene)) %>%
     filter(!is.na(log2FoldChange)) %>%
     dplyr::select(entrez_gene, everything()) %>%
-    dplyr::select(-ensembl_gene)
+    dplyr::select(-ensembl_gene, hgnc_symbol)
   x
 }
 
@@ -130,8 +130,8 @@ dds <- DESeq(dds,
              reduced = ~ das + cabo)
 
 # Getting counts ##############################################################
-
 achn.rnaseq <- vector("list", length = 2)
+
 # counts normalized for lib size differences
 achn.rnaseq[[1]] <- assay(normTransform(dds)) 
 # counts normalized for lib size differences and mean-centered
@@ -150,16 +150,14 @@ achn.rnaseq <- lapply(achn.rnaseq, function(x) {
 # getting results - log2FoldChange is for interaction effect of das + cabo 
 res <- vector("list", length = 3L)
 
-res[[1]] <- c(results(dds, coef = "das1.cabo1"))
+res[[1]] <- results(dds, coef = "das1.cabo1")
 
-res[[2]] <- c(symbolizeResults((res[[1]]), 
-                               key = tx2g))
+res[[2]] <- symbolizeResults(res[[1]], key = tx2g)
 
-res[[3]] <- c(entrezResults((res[[1]]),
-                            key = tx2g))
+res[[3]] <- entrezResults(res[[1]], key = tx2g)
 
 names(res) <- c("ensembl", "gene_symbol", "entrez")
-
+res$gene_symbol
 res.filt <- lapply(res, function(x) {
   x <- 
     data.frame(x) %>% 
