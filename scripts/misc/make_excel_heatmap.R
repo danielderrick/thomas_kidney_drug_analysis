@@ -19,6 +19,7 @@ mats_fixed <-
   x <- x[-1, -1]
   x
 })
+
 cols <- c("indianred", "white", "dodgerblue1")
 scales.matchExcel <- list("achn_v"  = colorRamp2(c(.15, .67, 1.14), cols),
                           "achn_gi" = colorRamp2(c(0,   .32,  .85), rev(cols)),
@@ -40,12 +41,12 @@ mapply(function(x, i) {
                cluster_columns = FALSE,
                name = names(mats_fixed)[i],
                col = scales.matchExcel[[i]],
-               column_title = "[Dasatanib] (µM) ",
+               row_title = "[Dasatanib] (µM) ",
                column_title_side = "top",
                column_names_side = "top",
-               row_title = "[Cabozantinib] (µM)",
+               column_title = "[Cabozantinib] (µM)",
                row_names_side = "left",
                row_title_side = "left")
-}, x = mats_fixed, i = c(1:8))
+}, x = mats_fixed[c(2,4,6,8)], i = c(2, 4, 6, 8))
 
 dev.off()
