@@ -11,43 +11,95 @@ library(reshape2)
 library(tidyverse)
 library(ComplexHeatmap)
 library(circlize)
+library(limma)
 
 pY <- read.xls("~/data/thomas/cabo_das/ACHN/phosphoproteomics/intensity/201712_GT_pY_invitro_ExcelOutput.xlsx",
-                sheet = 4)
+                sheet = 1)
 
 pST <- read.xls("~/data/thomas/cabo_das/ACHN/phosphoproteomics/intensity/201712_GT_pST_invitro_ExcelOutput.xlsx",
-                sheet = 4)
+                sheet = 1)
+
+
 ###############################################################################
 
-# Getting difference between combination and control measurements
+# Making sure that pAll is "all" character/numeric vectors
+pY$Phosphopeptide <- as.character(pY$Phosphopeptide)
+pY$Gene_Name <- as.character(pY$Gene_Name)
+
+pST$Phosphopeptide <- as.character(pST$Phosphopeptide)
+pST$Gene_Name <- as.character(pST$Gene_Name)
+
+# Reordering columns for convenience
+pY <- pY[, c(1:9, 14:17, 10:11, 12:13)]
+pST <- pST[, c(1:9, 14:17, 10:11, 12:13)]
+
+# Making metadata table for building model matrix
+meta <- data.frame(colnames(pY)[10:17])
+colnames(meta) <- "sample"
+meta$Cabo <- c(0, 0, 0, 0, 1, 1, 1, 1)
+meta$Das <- c(0, 0, 1, 1, 0, 0, 1, 1)
+design <- model.matrix(~Cabo*Das, meta)
+
+pY.use <- pY[, 10:17]
+rownames(pY.use) <- pY$Phosphopeptide
+
+filtro <- duplicated(pST$Phosphopeptide)
+pST.use <- pST[!filtro, 10:17]
+rownames(pST.use) <- pST$Phosphopeptide[!filtro]
+
+pAll <- rbind(pY.use, pST.use)
+
+# Fitting linear model to the pAll data
+fit.pAll.int  <- lmFit(pAll, design)
+fit.pAll.int  <- eBayes(fit.pAll.int)
+
+res.pAll.forheat.int  <- topTable(fit.pAll.int, 
+                            coef = "Cabo:Das", sort.by = "none", 
+                            resort.by = "M", n=Inf, p.value = 0.01,
+                            lfc = 2.5)
+pep.int <- rownames(res.pAll.forheat.int)
+###############################################################################
+
+meta <- data.frame(colnames(pY)[10:17])
+colnames(meta) <- "sample"
+meta$Cabo <- c(1, 1, 0, 0, 0, 0, 0, 0)
+meta$Das  <- c(0, 0, 1, 1, 0, 0, 0, 0)
+meta$CD   <- c(0, 0, 0, 0, 0, 0, 1, 1)
+design <- model.matrix(~ Cabo + Das + CD, meta)
+
+# Fitting linear model to the pAll data
+fit.pAll.cd <- lmFit(pAll, design)
+fit.pAll.cd <- eBayes(fit.pAll.cd)
+res.pAll.forheat.cd  <- topTable(fit.pAll.cd, c("CD"), p.value = .05, lfc = 2.5, 
+                                 number=Inf)
+
+pep.cd <- rownames(res.pAll.forheat.cd)
+# toPlot <- base::intersect(pep.int, pep.cd)
+toPlot <- pep.cd
+
+
 pY.w <- 
   pY %>% 
-  mutate(CD = (Intensity.CD.4A + Intensity.CD.4B)/2) %>%
-  mutate(Ctrl = (Intensity.CTL.1A + Intensity.CTL.1B)/2) %>% 
-  mutate(Diff = CD - Ctrl) %>% 
   mutate(type = "pY") %>% 
-  select(-Phosphopeptide, -Sequence7, -Sequence10,
+  select(-Sequence7, -Sequence10,
          -UniProt_ID, -Description, -Function.Phosphoresidue..phosphosite.org.,
          -Putative.Upstream.Kinases.Phosphatases.Binding.Domains)
 
 pST.w <- 
   pST %>% 
-  mutate(CD = (Intensity.CD.4A + Intensity.CD.4B)/2) %>%
-  mutate(Ctrl = (Intensity.CTL.1A + Intensity.CTL.1B)/2) %>% 
-  mutate(Diff = CD - Ctrl) %>% 
   mutate(type = "pST") %>% 
-  select(-Phosphopeptide, -Sequence7, -Sequence10,
+  select(-Sequence7, -Sequence10,
        -UniProt_ID, -Description, -Function.Phosphoresidue..phosphosite.org.,
        -Putative.Upstream.Kinases.Phosphatases.Binding.Domains)
 
-pData <- bind_rows(pY.w, pST.w)
+pData <- bind_rows(pY.w, pST.w) %>% 
+  filter(Phosphopeptide %in% toPlot)
 
 genefilt <- str_split(pData$Gene_Name, "; ") %>% lapply(., unique) %>% lapply(., length) %>% unlist
 pData <- pData[genefilt == 1, ]
 
 pData <- 
-  pData %>% 
-  filter(abs(Diff) > 1.5) %>% 
+  pData %>%
   mutate(Phosphoresidue = str_remove_all(Phosphoresidue, "[;,]"),
          Gene_Name = str_extract(Gene_Name, "[:alnum:]+"))
 
@@ -63,20 +115,29 @@ sits <- sapply(sits, function(x) {
   }
   x
 })
-pData <- 
-  pData %>% 
 
-pData.toPlot <- pData
-rownames(pData.toPlot) <- pData$Phosphopeptide
+pData <-
+  pData %>% 
+  mutate(Phosphoresidue = sits) %>% 
+  mutate(new_rowname = paste(Gene_Name, Phosphoresidue, sep = " "))
+
+pData.toPlot <- 
+  pData %>% 
+  filter(!duplicated(new_rowname))
+
+rownames(pData.toPlot) <- pData.toPlot$new_rowname
 pData.toPlot <- 
   pData.toPlot %>% 
-  dplyr::select(-Phosphopeptide, -type)
+  dplyr::select(contains("Intensity"))
 
-colnames(pData.toPlot) <- c("Veh A", "Veh B", "Cabo A", "Cabo B", "Das A", "Das B", "Cabo + Das A", "Cabo + Das B")
+colnames(pData.toPlot) <- c("Veh A", "Veh B",
+                            "Das A", "Das B",
+                            "Cabo A", "Cabo B",
+                            "Cabo + Das A",
+                            "Cabo + Das B")
 
-pdf("plots/heatmaps/phosphodata/phosphodata_heatmap_combined.pdf")
-Heatmap(pData.toPlot, split = pData$type,
-        show_row_names = FALSE,
+
+Heatmap(pData.toPlot, split = pData.toPlot$type,
         name = "intensity",
+        cluster_columns = FALSE,
         col = colorRamp2(c(-2, 0, 2), c("red", "white", "blue")))
-dev.off()
