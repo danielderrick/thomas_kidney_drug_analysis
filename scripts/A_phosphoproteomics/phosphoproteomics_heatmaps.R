@@ -24,44 +24,47 @@ pY.w <-
   pY %>% 
   mutate(CD = (Intensity.CD.4A + Intensity.CD.4B)/2) %>%
   mutate(Ctrl = (Intensity.CTL.1A + Intensity.CTL.1B)/2) %>% 
-  mutate(Diff = CD - Ctrl)
+  mutate(Diff = CD - Ctrl) %>% 
+  mutate(type = "pY") %>% 
+  select(-Phosphopeptide, -Sequence7, -Sequence10,
+         -UniProt_ID, -Description, -Function.Phosphoresidue..phosphosite.org.,
+         -Putative.Upstream.Kinases.Phosphatases.Binding.Domains)
 
 pST.w <- 
   pST %>% 
   mutate(CD = (Intensity.CD.4A + Intensity.CD.4B)/2) %>%
   mutate(Ctrl = (Intensity.CTL.1A + Intensity.CTL.1B)/2) %>% 
-  mutate(Diff = CD - Ctrl)
+  mutate(Diff = CD - Ctrl) %>% 
+  mutate(type = "pST") %>% 
+  select(-Phosphopeptide, -Sequence7, -Sequence10,
+       -UniProt_ID, -Description, -Function.Phosphoresidue..phosphosite.org.,
+       -Putative.Upstream.Kinases.Phosphatases.Binding.Domains)
 
-pY.filt <-
-  pY.w %>% 
-  filter(abs(Diff) > 1.5) %>%
-  mutate(type = "Y") %>% 
-  dplyr:: select(Phosphopeptide, type,
-         Intensity.CTL.1A, Intensity.CTL.1B, 
-         Intensity.Cabo.2A, Intensity.Cabo.2B,
-         Intensity.Das.3A, Intensity.Das.3B,
-         Intensity.CD.4A, Intensity.CD.4B)
-rownames(pY.filt) <- pY.filt$Phosphopeptide
-pY.plot <-
-  pY.filt %>% 
-  dplyr::select(-type, -Phosphopeptide)
+pData <- bind_rows(pY.w, pST.w)
 
-pST.filt <-
-  pST.w %>% 
+genefilt <- str_split(pData$Gene_Name, "; ") %>% lapply(., unique) %>% lapply(., length) %>% unlist
+pData <- pData[genefilt == 1, ]
+
+pData <- 
+  pData %>% 
   filter(abs(Diff) > 1.5) %>% 
-  mutate(type = "ST") %>% 
-  filter(!duplicated(Phosphopeptide)) %>% 
-  dplyr::select(Phosphopeptide, type,
-                 Intensity.CTL.1A, Intensity.CTL.1B, 
-                 Intensity.Cabo.2A, Intensity.Cabo.2B,
-                 Intensity.Das.3A, Intensity.Das.3B,
-                 Intensity.CD.4A, Intensity.CD.4B)
+  mutate(Phosphoresidue = str_remove_all(Phosphoresidue, "[;,]"),
+         Gene_Name = str_extract(Gene_Name, "[:alnum:]+"))
 
-pData <- bind_rows(pY.filt, pST.filt) %>% 
-  filter(!duplicated(Phosphopeptide))
-pData$type <- factor(pData$type,
-                     levels = c("ST", "Y"),
-                     labels = c("pST", "pY"))
+sits <- str_split(pData$Phosphoresidue, " ")
+sits <- sapply(sits, unique)
+
+sits <- sapply(sits, function(x) {
+  if (!is.na(x[4])) {
+    x[3] <- paste(x[3], "*", sep = "")
+    x <- paste(x[1:3], sep = ",", collapse = ", ")
+  } else {
+    x <- paste(x, sep = ",", collapse = ", ")
+  }
+  x
+})
+pData <- 
+  pData %>% 
 
 pData.toPlot <- pData
 rownames(pData.toPlot) <- pData$Phosphopeptide
