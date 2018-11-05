@@ -158,13 +158,13 @@ genesList <- lapply(resList, function(x) {
   X
 })
 
-dir <- c("figures/heatmaps/single_agent/lfc15")
+dir <- c("figures/heatmaps/single_agent/rnaseq/")
 
 if (!dir.exists(dir)) {
   dir.create(dir, recursive = TRUE)
 }
 
-pdf("figures/heatmaps/single_agent/lfc15/cabo_heatmap.pdf", height = 6, width = 6)
+pdf("figures/heatmaps/single_agent/rnaseq/cabo_heatmap.pdf", height = 6, width = 6)
 Heatmap(achn.rnaseq$mean_centered[genesList$C, ],
         show_row_names = FALSE,
         name = "mean-centered\nlog2(counts + 1)",
@@ -172,7 +172,7 @@ Heatmap(achn.rnaseq$mean_centered[genesList$C, ],
         column_title = "Cabo vs Vehicle\nlog2(FC) > 1.5")
 dev.off()
 
-pdf("figures/heatmaps/single_agent/lfc15/das_cabo_heatmap.pdf", height = 15, width = 6)
+pdf("figures/heatmaps/single_agent/rnaseq/das_cabo_heatmap.pdf", height = 15, width = 6)
 Heatmap(achn.rnaseq$mean_centered[genesList$DC, ],
         show_row_names = FALSE,
         name = "mean-centered\nlog2(counts + 1)",
@@ -188,7 +188,7 @@ cabo <- cabo[!filtro, ]
 rownames(cabo) <- cabo$hgnc_symbol
 cabo <- cabo[, -c(1:3)]
 
-pdf("figures/heatmaps/single_agent/lfc15/cabo_heatmap_named.pdf", height = 6, width = 6)
+pdf("figures/heatmaps/single_agent/rnaseq/cabo_heatmap_named.pdf", height = 6, width = 6)
 Heatmap(cabo,
         row_names_gp = gpar(fontsize = 8),
         name = "mean-centered\nlog2(counts + 1)",
@@ -203,7 +203,7 @@ dc <- dc[!filtro, ]
 rownames(dc) <- dc$hgnc_symbol
 dc <- dc[, -c(1:3)]
 
-pdf("figures/heatmaps/single_agent/lfc15/das_cabo_heatmap_named.pdf", height = 15, width = 6)
+pdf("figures/heatmaps/single_agent/rnaseq/das_cabo_heatmap_named.pdf", height = 15, width = 6)
 Heatmap(dc,
         row_names_gp = gpar(fontsize = 5),
         name = "mean-centered\nlog2(counts + 1)",
