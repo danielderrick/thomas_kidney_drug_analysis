@@ -138,7 +138,7 @@ tx2g[tx2g$hgnc_symbol == "", 2] <- NA
 ############################################################################
 dds <- DESeq(dds)
 
-thresh <- 1
+thresh <- 1.5
 resDC <- results(dds, contrast = c("drug", "veh", "das_cabo"),
                  lfcThreshold = thresh)
 resD  <- results(dds, contrast = c("drug", "veh", "das"), 
@@ -158,22 +158,56 @@ genesList <- lapply(resList, function(x) {
   X
 })
 
-dir.create("figures/heatmaps/single_agent/lfc1", recursive = TRUE)
+dir <- c("figures/heatmaps/single_agent/lfc15")
 
-pdf("figures/heatmaps/single_agent/lfc1/cabo_heatmap.pdf", height = 6, width = 6)
+if (!dir.exists(dir)) {
+  dir.create(dir, recursive = TRUE)
+}
+
+pdf("figures/heatmaps/single_agent/lfc15/cabo_heatmap.pdf", height = 6, width = 6)
 Heatmap(achn.rnaseq$mean_centered[genesList$C, ],
         show_row_names = FALSE,
         name = "mean-centered\nlog2(counts + 1)",
-        col = colorRamp2(c(-2, 0, 2), c("blue", "white", "red")),
+        col = colorRamp2(c(-2.25, 0, 2.25), c("blue", "white", "red")),
         column_title = "Cabo vs Vehicle\nlog2(FC) > 1.5")
 dev.off()
 
-
-pdf("figures/heatmaps/single_agent/lfc1/das_cabo_heatmap.pdf", height = 12, width = 6)
+pdf("figures/heatmaps/single_agent/lfc15/das_cabo_heatmap.pdf", height = 15, width = 6)
 Heatmap(achn.rnaseq$mean_centered[genesList$DC, ],
         show_row_names = FALSE,
         name = "mean-centered\nlog2(counts + 1)",
-        col = colorRamp2(c(-2, 0, 2), c("blue", "white", "red")),
+        col = colorRamp2(c(-2.25, 0, 2.25), c("blue", "white", "red")),
+        column_title = "Das+Cabo vs Vehicle\nlog2(FC) > 1.5")
+dev.off()
+
+
+cabo <- addAnnotation(achn.rnaseq$mean_centered[genesList$C, ],
+                      tx2g)
+filtro <- duplicated(cabo$hgnc_symbol) | is.na(cabo$hgnc_symbol)
+cabo <- cabo[!filtro, ]
+rownames(cabo) <- cabo$hgnc_symbol
+cabo <- cabo[, -c(1:3)]
+
+pdf("figures/heatmaps/single_agent/lfc15/cabo_heatmap_named.pdf", height = 6, width = 6)
+Heatmap(cabo,
+        row_names_gp = gpar(fontsize = 8),
+        name = "mean-centered\nlog2(counts + 1)",
+        col = colorRamp2(c(-2.25, 0, 2.25), c("blue", "white", "red")),
+        column_title = "Cabo vs Vehicle\nlog2(FC) > 1.5")
+dev.off()
+
+dc <- addAnnotation(achn.rnaseq$mean_centered[genesList$DC, ],
+                      tx2g)
+filtro <- duplicated(dc$hgnc_symbol) | is.na(dc$hgnc_symbol)
+dc <- dc[!filtro, ]
+rownames(dc) <- dc$hgnc_symbol
+dc <- dc[, -c(1:3)]
+
+pdf("figures/heatmaps/single_agent/lfc15/das_cabo_heatmap_named.pdf", height = 15, width = 6)
+Heatmap(dc,
+        row_names_gp = gpar(fontsize = 5),
+        name = "mean-centered\nlog2(counts + 1)",
+        col = colorRamp2(c(-2.25, 0, 2.25), c("blue", "white", "red")),
         column_title = "Das+Cabo vs Vehicle\nlog2(FC) > 1.5")
 dev.off()
 
