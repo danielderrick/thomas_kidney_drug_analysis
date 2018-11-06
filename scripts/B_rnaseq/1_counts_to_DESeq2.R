@@ -99,11 +99,12 @@ counts <- counts[, -grep("cyt_mk", colnames(counts))]
 # Making coldata
 meta <- 
   colnames(counts) %>% 
-  str_split_fixed(., "[.]", 2)
+  str_split_fixed(., "[.]", 2) %>% 
+  data.frame()
 
 dimnames(meta) <- list(rows = colnames(counts), 
                        columns = c("drug", "id"))
-
+meta$drug <- fct_shift(meta$drug, 3)
 # rearranging coldata into a two factor design - samples are either 
 # yes or no (0 or 1) for das and cabo
 coldata <- 
@@ -119,10 +120,9 @@ coldata <-
          cabo = as.factor(cabo)) %>% 
   dplyr::select(sample, das, cabo)
 
-# Creating DESeq Data Set.
-
 # Full model is effect of das + cabo + cabo:das
-dds <- DESeqDataSetFromMatrix(counts, coldata, ~ das*cabo)
+dds    <- DESeqDataSetFromMatrix(counts, coldata, ~ das*cabo)
+dds2   <- DESeqDataSetFromMatrix(counts, meta, ~ drug)
 
 # Running DESeq comparing full model (das + cabo + das*cabo) vs reduced model (das + cabo)
 dds <- DESeq(dds, 
@@ -139,7 +139,6 @@ achn.rnaseq[[2]] <- t(scale(t(achn.rnaseq[[1]]), scale = FALSE))
 
 names(achn.rnaseq) <- c("norm", "mean_centered")
 
-
 achn.rnaseq <- lapply(achn.rnaseq, function(x) {
   x <- addAnnotation(x, tx2g = tx2g)
   x
@@ -150,19 +149,16 @@ achn.rnaseq <- lapply(achn.rnaseq, function(x) {
 # getting results - log2FoldChange is for interaction effect of das + cabo 
 res <- vector("list", length = 3L)
 
-res[[1]] <- results(dds, coef = "das1.cabo1")
-
+res[[1]] <- results(dds)
 res[[2]] <- symbolizeResults(res[[1]], key = tx2g)
-
 res[[3]] <- entrezResults(res[[1]], key = tx2g)
 
 names(res) <- c("ensembl", "gene_symbol", "entrez")
-res$gene_symbol
+
 res.filt <- lapply(res, function(x) {
   x <- 
     data.frame(x) %>% 
-    filter(abs(log2FoldChange) > .5) %>% 
-    filter(padj < .05)
+    filter(padj < .01)
   x
 })
 
@@ -173,12 +169,12 @@ if (!dir.exists(out.dir)) {
 }
 
 save(dds,
+     dds2,
      res,
      res.filt,
      achn.rnaseq,
      file = sprintf("%s/%s",
                     out.dir, "rnaseq_data.Rdata"))
-
 
 writeCounts(achn.rnaseq$norm,
             sprintf("%s/%s",

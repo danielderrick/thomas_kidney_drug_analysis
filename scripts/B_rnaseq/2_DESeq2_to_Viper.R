@@ -66,13 +66,17 @@ pdf(sprintf("%s/%s", out.dir, "interaction_mr_analysis.pdf",
 plot(vp.res.a, mrs = 30)
 dev.off()
 
-
 # Extracting master regulators with |NES| > 5 as input to TieDie
 ###############################################################################
 
 filtro <- (abs(vp.res.a$es$nes) > 5)
 
-downstream.toWrite <- vp.res$es$nes[filtro, drop = FALSE]
+downstream.toWrite <- vp.res.a$es$nes[filtro, drop = FALSE]
+input.nodes <- names(vp.res.a$es$nes)[filtro]
+
+pdf("interaction_mrs_large.pdf", height = 12, width = 7)
+plot(vp.res.a, mrs = input.nodes)
+dev.off()
 
 downstream.toWrite <- data.frame(
   cbind(names(downstream.toWrite),
@@ -89,7 +93,7 @@ downstream.toWrite <-
   dplyr::select(X1, X3, X2) %>% 
   mutate(X3 = round(as.numeric(downstream.toWrite$X3), digits = 4))
 
-tiedie.dir <- "tiedie/input"
+tiedie.dir <- "~/Desktop"
 if (!dir.exists(tiedie.dir)) {
   dir.create(tiedie.dir, recursive = TRUE)
 }
