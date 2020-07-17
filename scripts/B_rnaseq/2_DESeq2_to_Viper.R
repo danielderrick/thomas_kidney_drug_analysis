@@ -20,7 +20,7 @@ load("processed_data/rnaseq_data.Rdata")
 ###############################################################################
 mart <- useMart(biomart = "ENSEMBL_MART_ENSEMBL",
                 dataset = "hsapiens_gene_ensembl",
-                host = 'www.ensembl.org')
+                host = 'oct2018.archive.ensembl.org')
 
 tx2g <- getBM(attributes = c("ensembl_gene_id",
                              "hgnc_symbol", 
@@ -42,6 +42,7 @@ vp.sig.prep <-
 vp.sig <- setNames(vp.sig.prep$log2FoldChange, vp.sig.prep$entrez_gene)
 
 # running viper using kirp regulon
+set.seed(5)
 vp.res <- msviper(vp.sig, regulonkirp)
 
 # creating table to convert entrez ids to hgnc symbols, annotating results
@@ -55,7 +56,7 @@ annot <- setNames(annot.prep$hgnc_symbol,
                   as.character(annot.prep$entrez_gene))
 vp.res.a   <- msviperAnnot(vp.res, annot)
 
-out.dir <- "figures"
+out.dir <- "figuresRemade/"
 
 if (!dir.exists(out.dir)) {
   dir.create(out.dir)
@@ -74,7 +75,8 @@ filtro <- (abs(vp.res.a$es$nes) > 5)
 downstream.toWrite <- vp.res.a$es$nes[filtro, drop = FALSE]
 input.nodes <- names(vp.res.a$es$nes)[filtro]
 
-pdf("interaction_mrs_large.pdf", height = 12, width = 7)
+pdf(sprintf("%s/%s", out.dir, "interaction_mrs_large.pdf", 
+            height = 12, width = 7))
 plot(vp.res.a, mrs = input.nodes)
 dev.off()
 
@@ -93,7 +95,7 @@ downstream.toWrite <-
   dplyr::select(X1, X3, X2) %>% 
   mutate(X3 = round(as.numeric(downstream.toWrite$X3), digits = 4))
 
-tiedie.dir <- "~/Desktop"
+tiedie.dir <- "processed_data/TieDie/TieDie_input/"
 if (!dir.exists(tiedie.dir)) {
   dir.create(tiedie.dir, recursive = TRUE)
 }

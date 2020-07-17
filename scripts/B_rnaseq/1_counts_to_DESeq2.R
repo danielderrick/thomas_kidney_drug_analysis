@@ -80,7 +80,7 @@ writeCounts <- function(x, filename) {
 ############################################################################
 mart <- useMart(biomart = "ENSEMBL_MART_ENSEMBL",
                 dataset = "hsapiens_gene_ensembl",
-                host = 'www.ensembl.org')
+                host = 'oct2018.archive.ensembl.org')
 
 tx2g <- getBM(attributes = c("ensembl_gene_id",
                              "hgnc_symbol", 
@@ -105,6 +105,7 @@ meta <-
 dimnames(meta) <- list(rows = colnames(counts), 
                        columns = c("drug", "id"))
 meta$drug <- fct_shift(meta$drug, 3)
+
 # rearranging coldata into a two factor design - samples are either 
 # yes or no (0 or 1) for das and cabo
 coldata <- 
@@ -122,7 +123,6 @@ coldata <-
 
 # Full model is effect of das + cabo + cabo:das
 dds    <- DESeqDataSetFromMatrix(counts, coldata, ~ das*cabo)
-dds2   <- DESeqDataSetFromMatrix(counts, meta, ~ drug)
 
 # Running DESeq comparing full model (das + cabo + das*cabo) vs reduced model (das + cabo)
 dds <- DESeq(dds, 
@@ -169,7 +169,6 @@ if (!dir.exists(out.dir)) {
 }
 
 save(dds,
-     dds2,
      res,
      res.filt,
      achn.rnaseq,
