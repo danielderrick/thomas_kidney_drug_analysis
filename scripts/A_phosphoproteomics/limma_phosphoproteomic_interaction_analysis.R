@@ -45,19 +45,21 @@ pST.use <- pST[!filtro, 10:17]
 rownames(pST.use) <- pST$Phosphopeptide[!filtro]
 
 # Fitting linear model to the pAll data
-fit.pY  <- lmFit(pY.use, design)
+fit.pY   <- lmFit(pY.use, design)
 fit.pY   <- eBayes(fit.pY)
 fit.pST <- lmFit(pST.use, design)
 fit.pST  <- eBayes(fit.pST)
 
 # Getting results, where logFC is for the cabo-das interaction effect
-res.pY  <- topTable(fit.pY, coef = "Cabo:Das", sort.by = "none", resort.by = "M", n=Inf)
+res.pY  <- topTable(fit.pY, coef = "Cabo:Das", sort.by = "none", resort.by = "M", n=Inf, p.value = 0.05)
 res.pST <- topTable(fit.pST, coef = "Cabo:Das", sort.by = "none", resort.by = "M", n=Inf)
+res.pY.forHeat  <- topTable(fit.pY, coef = "Cabo:Das", sort.by = "none", resort.by = "M", n=Inf, p.value = 0.05)
+res.pST.forHeat  <- topTable(fit.pST, coef = "Cabo:Das", sort.by = "none", resort.by = "M", n=Inf, p.value = 0.05)
 
 res.pY  <- res.pY %>% 
   mutate(Phosphopeptide = rownames(res.pY)) %>% 
   dplyr::select(Phosphopeptide, logFC)
-s
+
 res.pST <- res.pST %>%
   mutate(Phosphopeptide = rownames(res.pST)) %>% 
   dplyr::select(Phosphopeptide, logFC)

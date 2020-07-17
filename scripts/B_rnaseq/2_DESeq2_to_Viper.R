@@ -70,7 +70,7 @@ dev.off()
 # Extracting master regulators with |NES| > 5 as input to TieDie
 ###############################################################################
 
-filtro <- (abs(vp.res.a$es$nes) > 5)
+filtro <- (abs(vp.res.a$es$nes) >= 5)
 
 downstream.toWrite <- vp.res.a$es$nes[filtro, drop = FALSE]
 input.nodes <- names(vp.res.a$es$nes)[filtro]

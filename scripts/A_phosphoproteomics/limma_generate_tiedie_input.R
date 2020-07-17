@@ -16,6 +16,7 @@ pST <- read.xls("~/data/thomas/cabo_das/ACHN/phosphoproteomics/intensity/201712_
                 sheet = 1)
 KSEA.out <- read.csv("/Users/derrickd/data/thomas/cabo_das/ACHN/phosphoproteomics/KSEA/interaction/interaction_pAll.csv")
 
+outDir <- "processed_data/TieDie/TieDie_input"
 ###############################################################################
 
 # Making sure that pAll is all character/numeric vectors
@@ -73,9 +74,14 @@ temp.pST.join <-
   mutate(Phosphopeptide = rownames(temp.pST)) %>% 
   dplyr::select(Phosphopeptide, logFC) %>% 
   inner_join(., pST, by = "Phosphopeptide")
-filtro.pY  <- grep("phosphor", 
+
+temp.pY.join$Function.Phosphoresidue..phosphosite.org. %>% 
+  levels %>% 
+  grep("phosphor", ., value = TRUE)
+
+filtro.pY  <- grep("phosphorylat", 
                    as.character(temp.pY.join$Function.Phosphoresidue..phosphosite.org.))
-filtro.pST <- grep("phosphor", 
+filtro.pST <- grep("phosphorylat", 
                    as.character(temp.pST.join$Function.Phosphoresidue..phosphosite.org.))
 
 tpAll.j <- rbind({temp.pY.join[filtro.pY, ] %>% dplyr::select(Gene_Name, logFC)},
@@ -108,8 +114,15 @@ upstream.df[upstream.df$X2 == 1, 2] <- "+"
 upstream.df[, 3] <- round(as.numeric(upstream.df[, 3]), 4)
 upstream.df <- upstream.df %>% dplyr::select(X1, X3, X2)
 
+####################################### Writing to File
+
+if(!dir.exists(outDir)) {
+  dir.create(outDir, recursive = TRUE)
+}
+
 write.table(upstream.df,
-            file = "upstream.input",
+            file = sprintf("%s/upstream.input", outDir),
             quote = FALSE,
+            sep = "\t",
             row.names = FALSE,
             col.names = FALSE)

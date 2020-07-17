@@ -1,10 +1,10 @@
-# Cabo Das: Calculate Interaction log2FoldChanges for phosphoproteomic data
-#
-# The purpose of this script is to calculate log2FoldChanges for the
-# phosphoproteomic data for the interaction effect. The output is then
-# written to CSV files to be sent to Larry Cheng @ Rutgers for KSEA
-# analysis.
-#
+# Cabo das: Limma Analysis of phosphoproteomic data 
+
+# The purpose of this script is to analyze mass spec phosphoproteomic data,
+# using the R package Limma to compare a full model (including terms for
+# indvidual drugs as well as an interaction effect) to a reduced model
+# that only accounts for individual drug effects.
+
 ###############################################################################
 # Setup
 library(gdata)
@@ -19,8 +19,6 @@ pY <- read.xls("~/data/thomas/cabo_das/ACHN/phosphoproteomics/intensity/201712_G
 
 pST <- read.xls("~/data/thomas/cabo_das/ACHN/phosphoproteomics/intensity/201712_GT_pST_invitro_ExcelOutput.xlsx",
                 sheet = 1)
-
-outDir <- "processed_data/KSEA_input"
 ###############################################################################
 
 # Making sure that pAll is "all" character/numeric vectors
@@ -44,53 +42,28 @@ design <- model.matrix(~Cabo*Das, meta)
 pY.use <- pY[, 10:17]
 rownames(pY.use) <- pY$Phosphopeptide
 
-pST.use <- pST[, 10:17]
-rownames(pST.use) <- pST$Phosphopeptide
+filtro <- duplicated(pST$Phosphopeptide)
+pST.use <- pST[!filtro, 10:17]
+rownames(pST.use) <- pST$Phosphopeptide[!filtro]
 
 # Fitting linear model to the pAll data
-fit.pY  <- lmFit(pY.use, design)
+fit.pY   <- lmFit(pY.use, design)
 fit.pY   <- eBayes(fit.pY)
-fit.pST <- lmFit(pST.use, design)
+fit.pST  <- lmFit(pST.use, design)
 fit.pST  <- eBayes(fit.pST)
 
-res.pY  <- topTable(fit.pY, coef = "Cabo:Das", sort.by = "none", resort.by = "M", n=Inf)
-res.pST <- topTable(fit.pST, coef = "Cabo:Das", sort.by = "none", resort.by = "M", n=Inf)
+# Getting results, where logFC is for the cabo-das interaction effect
+res.pY  <- topTable(fit.pY, coef = "Cabo:Das", sort.by = "none", resort.by = "M", n=Inf, p.value = 0.01)
+res.pST <- topTable(fit.pST, coef = "Cabo:Das", sort.by = "none", resort.by = "M", n=Inf, p.value = 0.01)
 
-res.pY.f  <- res.pY %>% 
+res.pY %>% dim
+res.pST %>% dim
+
+res.pY  <- res.pY %>% 
   mutate(Phosphopeptide = rownames(res.pY)) %>% 
   dplyr::select(Phosphopeptide, logFC)
 
-res.pST.f <- res.pST %>% 
+res.pST <- res.pST %>%
   mutate(Phosphopeptide = rownames(res.pST)) %>% 
   dplyr::select(Phosphopeptide, logFC)
 
-pY.toWrite <- 
-  full_join(pY, res.pY.f, by = "Phosphopeptide") %>% 
-  select(Phosphopeptide, logFC, everything())
-
-pY.toWrite.sm <-
-  pY.toWrite %>% 
-  select(Phosphopeptide, logFC) %>% 
-  arrange(desc(logFC))
-
-
-pST.toWrite <- 
-  full_join(pST, res.pST.f, by = "Phosphopeptide") %>% 
-  select(Phosphopeptide, logFC, everything())
-
-pST.toWrite.sm <-
-  pST.toWrite %>% 
-  select(Phosphopeptide, logFC) %>% 
-  arrange(desc(logFC))
-
-
-if(!dir.exists(outDir)) {
-  dir.create(outDir, recursive = TRUE)
-}
-
-write.csv(pST.toWrite.sm, 
-          file = sprintf("%s/pST_ranked_phosphopeptides.csv", outDir),
-          quote = FALSE)
-write.csv(pY.toWrite.sm, 
-          file = sprintf("%s/pY_ranked_phosphopeptides.csv", outDir),
-          quote = FALSE)
